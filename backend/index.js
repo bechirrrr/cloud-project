@@ -9,17 +9,37 @@ app.use(express.json());
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+  res.status(200).json({ status: "healthy" });
+});
+
+// Test database connection
+app.get("/api/health/db", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW()");
+    res.status(200).json({
+      status: "healthy",
+      database: "connected",
+      timestamp: result.rows[0].now,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "unhealthy",
+      database: "disconnected",
+      error: err.message,
+    });
+  }
 });
 
 // Votre route existante
 app.get("/api/message", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT content FROM messages LIMIT 1"
-    );
+    const result = await pool.query("SELECT content FROM messages LIMIT 1");
+    if (result.rows.length === 0) {
+      return res.json({ message: "No messages found" });
+    }
     res.json({ message: result.rows[0].content });
   } catch (err) {
+    console.error("Database error:", err);
     res.status(500).json({ error: "Database error" });
   }
 });
